@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: HyperChain zkEVM Docs
+    url: https://docs.hyperchain.org
+    about: Official HyperChain zkEVM Documentation
+  - name: Telegram Group
+    url: https://t.me/0xHyperChain
+    about: Official HyperChain zkEVM Telegram Group
+  - name: Discord Community
+    url: https://discord.gg/0xHyperChain
+    about: Official 0xHyperChain zkEVM Discord Community
