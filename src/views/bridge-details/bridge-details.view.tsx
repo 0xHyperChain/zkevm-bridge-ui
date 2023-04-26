@@ -388,7 +388,7 @@ export const BridgeDetails: FC = () => {
               </div>
             )}
           </Card>
-          {(status === "initiated" || (status === "on-hold" && from.key === "hyperchain-zkevm")) && (
+          {(status === "initiated" || (status === "on-hold" )) && (
             <div className={classes.finaliseRow}>
               <Button
                 disabled={status === "initiated" || isFinaliseButtonDisabled}
