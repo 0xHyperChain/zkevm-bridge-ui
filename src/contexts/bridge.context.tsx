@@ -1,4 +1,5 @@
 import { BigNumber, CallOverrides, ContractTransaction } from "ethers";
+import { defaultAbiCoder } from "ethers/lib/utils";
 import { FC, PropsWithChildren, createContext, useCallback, useContext, useMemo } from "react";
 
 import { getDeposit, getDeposits, getMerkleProof } from "src/adapters/bridge-api";
@@ -35,7 +36,7 @@ import {
 import { Bridge__factory } from "src/types/contracts/bridge";
 import { multiplyAmounts } from "src/utils/amounts";
 import { serializeBridgeId } from "src/utils/serializers";
-import { isTokenEther, selectTokenAddress } from "src/utils/tokens";
+import { isL2NativeToken, isTokenEther, selectTokenAddress } from "src/utils/tokens";
 import { isAsyncTaskDataAvailable } from "src/utils/types";
 
 interface EstimateBridgeGasParams {
@@ -73,16 +74,16 @@ type FetchBridgesParams = {
   env: Env;
   ethereumAddress: string;
 } & (
-  | {
+    | {
       limit: number;
       offset: number;
       type: "load";
     }
-  | {
+    | {
       quantity: number;
       type: "reload";
     }
-);
+  );
 
 interface BridgeParams {
   amount: BigNumber;
@@ -190,14 +191,14 @@ const BridgeProvider: FC<PropsWithChildren> = (props) => {
         claim_tx_hash !== null
           ? { status: "claimed", txHash: claim_tx_hash }
           : ready_for_claim
-          ? { status: "ready" }
-          : { status: "pending" };
+            ? { status: "ready" }
+            : { status: "pending" };
 
       const tokenPrice: BigNumber | undefined = env.fiatExchangeRates.areEnabled
         ? await getTokenPrice({
-            chain: from,
-            token,
-          }).catch(() => undefined)
+          chain: from,
+          token,
+        }).catch(() => undefined)
         : undefined;
 
       const fiatAmount =
@@ -339,8 +340,8 @@ const BridgeProvider: FC<PropsWithChildren> = (props) => {
                   claim_tx_hash !== null
                     ? { status: "claimed", txHash: claim_tx_hash }
                     : ready_for_claim
-                    ? { status: "ready" }
-                    : { status: "pending" },
+                      ? { status: "ready" }
+                      : { status: "pending" },
                 depositCount: deposit_cnt,
                 depositTxHash: tx_hash,
                 destinationAddress: dest_addr,
@@ -358,26 +359,26 @@ const BridgeProvider: FC<PropsWithChildren> = (props) => {
 
       const tokenPrices: TokenPrices = env.fiatExchangeRates.areEnabled
         ? await deposits.reduce(
-            async (
-              accTokenPrices: Promise<TokenPrices>,
-              deposit: Deposit
-            ): Promise<TokenPrices> => {
-              const tokenPrices = await accTokenPrices;
-              const tokenCachedPrice = tokenPrices[deposit.token.address];
-              const tokenPrice =
-                tokenCachedPrice !== undefined
-                  ? tokenCachedPrice
-                  : await getTokenPrice({ chain: deposit.from, token: deposit.token }).catch(
-                      () => null
-                    );
+          async (
+            accTokenPrices: Promise<TokenPrices>,
+            deposit: Deposit
+          ): Promise<TokenPrices> => {
+            const tokenPrices = await accTokenPrices;
+            const tokenCachedPrice = tokenPrices[deposit.token.address];
+            const tokenPrice =
+              tokenCachedPrice !== undefined
+                ? tokenCachedPrice
+                : await getTokenPrice({ chain: deposit.from, token: deposit.token }).catch(
+                  () => null
+                );
 
-              return {
-                ...tokenPrices,
-                [deposit.token.address]: tokenPrice,
-              };
-            },
-            Promise.resolve({})
-          )
+            return {
+              ...tokenPrices,
+              [deposit.token.address]: tokenPrice,
+            };
+          },
+          Promise.resolve({})
+        )
         : {};
 
       const bridges = deposits.map((partialDeposit): Bridge => {
@@ -399,16 +400,16 @@ const BridgeProvider: FC<PropsWithChildren> = (props) => {
         const fiatAmount =
           tokenPrice !== undefined && tokenPrice !== null
             ? multiplyAmounts(
-                {
-                  precision: FIAT_DISPLAY_PRECISION,
-                  value: tokenPrice,
-                },
-                {
-                  precision: token.decimals,
-                  value: amount,
-                },
-                FIAT_DISPLAY_PRECISION
-              )
+              {
+                precision: FIAT_DISPLAY_PRECISION,
+                value: tokenPrice,
+              },
+              {
+                precision: token.decimals,
+                value: amount,
+              },
+              FIAT_DISPLAY_PRECISION
+            )
             : undefined;
 
         const id = serializeBridgeId({
@@ -691,26 +692,26 @@ const BridgeProvider: FC<PropsWithChildren> = (props) => {
       const gasLimit =
         from.key === "ethereum"
           ? await contract.estimateGas
-              .bridgeAsset(
-                to.networkId,
-                destinationAddress,
-                amount,
-                tokenAddress,
-                forceUpdateGlobalExitRoot,
-                "0x",
-                overrides
-              )
-              .then((gasLimit) => {
-                const gasLimitIncrease = gasLimit
-                  .div(BigNumber.from(100))
-                  .mul(BRIDGE_CALL_GAS_LIMIT_INCREASE_PERCENTAGE);
+            .bridgeAsset(
+              to.networkId,
+              destinationAddress,
+              amount,
+              tokenAddress,
+              forceUpdateGlobalExitRoot,
+              "0x",
+              overrides
+            )
+            .then((gasLimit) => {
+              const gasLimitIncrease = gasLimit
+                .div(BigNumber.from(100))
+                .mul(BRIDGE_CALL_GAS_LIMIT_INCREASE_PERCENTAGE);
 
-                const increasedGasLimit = gasLimit.add(gasLimitIncrease);
+              const increasedGasLimit = gasLimit.add(gasLimitIncrease);
 
-                return tokenSpendPermission.type === "permit"
-                  ? increasedGasLimit.add(BRIDGE_CALL_PERMIT_GAS_LIMIT_INCREASE)
-                  : increasedGasLimit;
-              })
+              return tokenSpendPermission.type === "permit"
+                ? increasedGasLimit.add(BRIDGE_CALL_PERMIT_GAS_LIMIT_INCREASE)
+                : increasedGasLimit;
+            })
           : BigNumber.from(300000);
 
       const { gasPrice, maxFeePerGas } = await from.provider.getFeeData();
@@ -755,26 +756,42 @@ const BridgeProvider: FC<PropsWithChildren> = (props) => {
 
       const { account, chainId, provider } = connectedProvider.data;
       const contract = Bridge__factory.connect(from.bridgeContractAddress, provider.getSigner());
+      let value 
+      // if (isL2NativeToken(token, from) && from.key=="hyperchain-zkevm"){
+      //   value = amount
+      // }
+      if (isTokenEther(token) && token.chainId == from.chainId){
+        value = amount
+      }else{
+        value = 0
+      }
+
+      console.log("amount", amount)
+      console.log("value", value)
+      console.log("from.chainId", token.chainId)
+      console.log("chainId", chainId)
+      console.log("selectTokenAddress(token, from)", selectTokenAddress(token, from))
       const overrides: CallOverrides = {
-        value: isTokenEther(token) ? amount : undefined,
+        // value: isTokenEther(token) ? amount : undefined,
+        value: value,
         ...(gas
           ? gas.data
           : (await estimateBridgeGas({ destinationAddress, from, to, token, tokenSpendPermission }))
-              .data),
+            .data),
       };
 
       const executeBridge = async () => {
         const permitData =
           tokenSpendPermission.type === "permit"
             ? await permit({
-                account: account,
-                from: from,
-                permit: tokenSpendPermission.permit,
-                provider: provider,
-                spender: from.bridgeContractAddress,
-                token,
-                value: amount,
-              })
+              account: account,
+              from: from,
+              permit: tokenSpendPermission.permit,
+              provider: provider,
+              spender: from.bridgeContractAddress,
+              token,
+              value: amount,
+            })
             : "0x";
 
         const forceUpdateGlobalExitRoot =
@@ -838,7 +855,10 @@ const BridgeProvider: FC<PropsWithChildren> = (props) => {
       if (env === undefined) {
         throw new Error("Env is not available");
       }
-
+      
+      console.log("token", token)
+      
+      console.log("tokenOriginNetwork", tokenOriginNetwork)
       const { account, chainId, provider } = connectedProvider.data;
       const contract = Bridge__factory.connect(to.bridgeContractAddress, provider.getSigner());
       const isL2Claim = to.key === "hyperchain-zkevm";
@@ -850,13 +870,48 @@ const BridgeProvider: FC<PropsWithChildren> = (props) => {
         depositCount,
         networkId,
       });
-
+     
       const isTokenNativeOfToChain = token.chainId === to.chainId;
       const isMetadataRequired = !isTokenEther(token) && !isTokenNativeOfToChain;
-      const metadata = isMetadataRequired
+      let metadata = isMetadataRequired
         ? await getErc20TokenEncodedMetadata({ chain: from, token })
         : "0x";
 
+      if (isL2NativeToken(token, from)) {
+        if (from.key == "ethereum") {
+          metadata = "0x";
+        } else {
+          // metadata = await getErc20TokenEncodedMetadata({ chain: to, token })
+          metadata = "0x";
+        }
+      }else{
+        if (isTokenEther(token) && from.key == "ethereum"){
+          metadata = "0x";
+          // metadata = defaultAbiCoder.encode(["string", "string", "uint8"], ["Ether", "ETH", 18]); //await getErc20TokenEncodedMetadata({ chain: to, token })
+          // 0x000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000120000000000000000000000000000000000000000000000000000000000000005457468657200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000034554480000000000000000000000000000000000000000000000000000000000
+        }
+      }
+    
+    console.log("metedata", metadata)
+    //  console.log("merkleProof",merkleProof)
+    //  console.log("depositCount",depositCount)
+    //  console.log("mainExitRoot",mainExitRoot)
+    //  console.log("rollupExitRoot",rollupExitRoot)
+     console.log("claim->tokenOriginNetwork",tokenOriginNetwork)
+     console.log("claim->token",token)
+     console.log("claim->to",to)
+     console.log("claim->destinationAddress",destinationAddress)
+     console.log("claim->amount",amount)
+     console.log("claim->metadata",metadata)
+      // if (token.address == env.chains[0].l2NativeInL1Address && from.chainId == env.chains[0].chainId){
+      //   metadata = "0x";
+      // }
+      // if (isTokenEther(token) && token.wrappedToken && from.chainId == env.chains[1].chainId){
+      //   metadata = await getErc20TokenEncodedMetadata({ chain: from, token })
+      // }
+     
+
+      
       const executeClaim = () =>
         contract
           .claimAsset(
@@ -870,7 +925,7 @@ const BridgeProvider: FC<PropsWithChildren> = (props) => {
             destinationAddress,
             amount,
             metadata,
-            isL2Claim ? { gasLimit: 1500000, gasPrice: 0 } : {}
+            isL2Claim ? { gasLimit: 1500000, gasPrice: 1e9 } : {gasLimit: 1500000,}
           )
           .then((txData) => {
             storage.addAccountPendingTx(account, env, {
@@ -884,11 +939,12 @@ const BridgeProvider: FC<PropsWithChildren> = (props) => {
               token,
               type: "claim",
             });
-
+            console.log("txData", txData)
             return txData;
           });
 
       if (to.chainId === chainId) {
+        console.log("claim->executeClaim")
         return executeClaim();
       } else {
         return changeNetwork(to)

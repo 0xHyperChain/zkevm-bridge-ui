@@ -6,6 +6,7 @@ import { ReactComponent as ZkEVMChainIcon } from "src/assets/icons/chains/zkevm.
 import { Chain, Currency, EthereumChain, ProviderError, Token, ZkEVMChain } from "src/domain";
 import { ProofOfEfficiency__factory } from "src/types/contracts/proof-of-efficiency";
 import { getEthereumNetworkName } from "src/utils/labels";
+import { useEnvContext } from "./contexts/env.context";
 
 export const DAI_PERMIT_TYPEHASH =
   "0xea2aa0a1be11a07ed86d755c93467f4f82362b452371d1ba94d1715123511acb";
@@ -61,6 +62,9 @@ export const DEPOSIT_CHECK_WORD = "I understand";
 export const ETH_TOKEN_LOGO_URI =
   "https://raw.githubusercontent.com/Uniswap/interface/main/src/assets/images/ethereum-logo.png";
 
+export const HC_TOKEN_LOGO_URI =
+  "https://raw.githubusercontent.com/0xHyperChain/zkevm-bridge-ui/main/src/assets/icons/chains/zkevm.svg";
+
 export const HYPERCHAIN_SUPPORT_URL = "https://support.hyperchain.technology";
 
 export const HYPERCHAIN_TERMS_AND_CONDITIONS_URL = "https://hyperchain.technology/terms-of-use";
@@ -76,7 +80,6 @@ export const TOKEN_BLACKLIST = [
   "0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6",
   "0x4F9A0e7FD2Bf6067db6994CF12E4495Df938E6e9",
 ];
-
 export const getChains = ({
   ethereum,
   hyperchainZkEVM,
@@ -86,12 +89,14 @@ export const getChains = ({
     explorerUrl: string;
     poeContractAddress: string;
     rpcUrl: string;
+    l2NativeInL1Address: string;
   };
   hyperchainZkEVM: {
     bridgeContractAddress: string;
     explorerUrl: string;
     networkId: number;
     rpcUrl: string;
+    l2NativeInL1Address: string;
   };
 }): Promise<[EthereumChain, ZkEVMChain]> => {
   const ethereumProvider = new StaticJsonRpcProvider(ethereum.rpcUrl);
@@ -121,6 +126,7 @@ export const getChains = ({
       networkId: 0,
       poeContractAddress: ethereum.poeContractAddress,
       provider: ethereumProvider,
+      l2NativeInL1Address: ethereum.l2NativeInL1Address,
     },
     {
       bridgeContractAddress: hyperchainZkEVM.bridgeContractAddress,
@@ -128,19 +134,35 @@ export const getChains = ({
       explorerUrl: hyperchainZkEVM.explorerUrl,
       Icon: ZkEVMChainIcon,
       key: "hyperchain-zkevm",
-      name: hyperchainZkEVMNetworkName,
+      name: "Hyper Chain",//hyperchainZkEVMNetworkName,
       nativeCurrency: {
         decimals: 18,
         name: "Ether",
         symbol: "ETH",
       },
       networkId: hyperchainZkEVM.networkId,
+      l2NativeInL1Address: hyperchainZkEVM.l2NativeInL1Address,
       provider: hyperchainZkEVMProvider,
     },
   ]);
 };
 
 export const getEtherToken = (chain: Chain): Token => {
+  // const env = useEnvContext();
+  // if (env) {
+  //   return {
+  //     address: env?.chains[0].l2NativeInL1Address,
+  //     chainId: env?.chains[0].chainId,
+  //     decimals: 18,
+  //     logoURI: HC_TOKEN_LOGO_URI, //ZkEVMChainIcon.toString(),
+  //     name: "HC",
+  //     symbol: "HC",
+  //     wrappedToken: {
+  //       address: ethers.constants.AddressZero,
+  //       chainId: env?.chains[1].chainId,
+  //     }
+  //   }
+  // }
   return {
     address: ethers.constants.AddressZero,
     chainId: chain.chainId,

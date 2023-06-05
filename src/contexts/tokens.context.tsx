@@ -1,6 +1,6 @@
 import { Web3Provider } from "@ethersproject/providers";
 import axios from "axios";
-import { BigNumber, constants as ethersConstants } from "ethers";
+import { BigNumber, constants, constants as ethersConstants } from "ethers";
 import {
   FC,
   PropsWithChildren,
@@ -89,19 +89,20 @@ const tokensContext = createContext<TokensContext>({
 
 const TokensProvider: FC<PropsWithChildren> = (props) => {
   const env = useEnvContext();
+  
   const { notifyError } = useErrorContext();
   const { changeNetwork, connectedProvider } = useProvidersContext();
   const [tokens, setTokens] = useState<Token[]>();
   const fetchedTokens = useRef<Token[]>([]);
-
+  
   /**
    * Provided a token, its native chain and any other chain, computes the address of the wrapped token on the other chain
    */
   const computeWrappedTokenAddress = useCallback(
     ({ nativeChain, otherChain, token }: ComputeWrappedTokenAddressParams): Promise<string> => {
-      if (isTokenEther(token)) {
-        throw Error("Can't precalculate the wrapper address of Ether");
-      }
+      // if (isTokenEther(token)) {
+      //   throw Error("Can't precalculate the wrapper address of Ether");
+      // }
       const bridgeContract = Bridge__factory.connect(
         otherChain.bridgeContractAddress,
         otherChain.provider
@@ -147,12 +148,24 @@ const TokensProvider: FC<PropsWithChildren> = (props) => {
    */
   const addWrappedToken = useCallback(
     ({ token }: AddWrappedTokenParams): Promise<Token> => {
-      if (token.wrappedToken || isTokenEther(token)) {
+      // if (token.wrappedToken || isTokenEther(token)) {
+      if (token.wrappedToken ) {
         return Promise.resolve(token);
       } else {
         if (!env) {
           throw Error("The env is not available");
         }
+        
+        if (isTokenEther(token) && token.chainId == env.chains[1].chainId){
+          return Promise.resolve({
+            ...token,
+            wrappedToken: {
+              address: env.chains[0].l2NativeInL1Address,
+              chainId: env.chains[0].chainId,
+            },
+          });
+        }
+        
         const ethereumChain = env.chains[0];
         const hyperchainZkEVMChain = env.chains[1];
         const nativeChain =
@@ -277,6 +290,7 @@ const TokensProvider: FC<PropsWithChildren> = (props) => {
 
   const getErc20TokenBalance = useCallback(
     async ({ accountAddress, chain, tokenAddress }: GetErc20TokenBalanceParams) => {
+      // console.log("getErc20TokenBalance", accountAddress,  chain.chainId, tokenAddress,)
       const isTokenEther = tokenAddress === ethersConstants.AddressZero;
       if (isTokenEther) {
         return Promise.reject(new Error("Ether is not supported as ERC20 token"));
@@ -311,17 +325,19 @@ const TokensProvider: FC<PropsWithChildren> = (props) => {
 
   // initialize tokens
   useEffect(() => {
+    // console.log("env", env)
     if (env) {
       const ethereumChain = env.chains[0];
       getEthereumErc20Tokens()
         .then((ethereumErc20Tokens) =>
           Promise.all(
             ethereumErc20Tokens
-              .filter((token) => token.chainId === ethereumChain.chainId)
+              .filter((token) => token.chainId === ethereumChain.chainId || isTokenEther(token) )
               .map((token) => addWrappedToken({ token }))
           )
             .then((chainTokens) => {
-              const tokens = [getEtherToken(ethereumChain), ...chainTokens];
+              // const tokens = [getEtherToken(ethereumChain), ...chainTokens];
+              const tokens = [...chainTokens];
               cleanupCustomTokens(tokens);
               setTokens(tokens);
             })
@@ -332,6 +348,7 @@ const TokensProvider: FC<PropsWithChildren> = (props) => {
   }, [env, addWrappedToken, notifyError]);
 
   const value = useMemo(() => {
+    // console.log("tokens", tokens)
     return {
       addWrappedToken,
       approve,

@@ -18,6 +18,7 @@ interface Env {
   VITE_FIAT_EXCHANGE_RATES_API_KEY?: string;
   VITE_FIAT_EXCHANGE_RATES_API_URL?: string;
   VITE_FIAT_EXCHANGE_RATES_ETHEREUM_USDC_ADDRESS?: string;
+  VITE_HYPERCHAIN_ZK_EVM_NATIVE_IN_ETHEREUM_ADDRESS: string;
   VITE_HYPERCHAIN_ZK_EVM_BRIDGE_CONTRACT_ADDRESS: string;
   VITE_HYPERCHAIN_ZK_EVM_EXPLORER_URL: string;
   VITE_HYPERCHAIN_ZK_EVM_NETWORK_ID: string;
@@ -30,6 +31,7 @@ interface Env {
   VITE_REPORT_FORM_PLATFORM_ENTRY?: string;
   VITE_REPORT_FORM_URL?: string;
   VITE_REPORT_FORM_URL_ENTRY?: string;
+
 }
 
 type GetFiatExchangeRatesEnvParams = Pick<
@@ -166,6 +168,7 @@ const envToDomain = ({
   VITE_FIAT_EXCHANGE_RATES_API_KEY,
   VITE_FIAT_EXCHANGE_RATES_API_URL,
   VITE_FIAT_EXCHANGE_RATES_ETHEREUM_USDC_ADDRESS,
+  VITE_HYPERCHAIN_ZK_EVM_NATIVE_IN_ETHEREUM_ADDRESS,
   VITE_HYPERCHAIN_ZK_EVM_BRIDGE_CONTRACT_ADDRESS,
   VITE_HYPERCHAIN_ZK_EVM_EXPLORER_URL,
   VITE_HYPERCHAIN_ZK_EVM_NETWORK_ID,
@@ -206,12 +209,14 @@ const envToDomain = ({
       explorerUrl: VITE_ETHEREUM_EXPLORER_URL,
       poeContractAddress: VITE_ETHEREUM_PROOF_OF_EFFICIENCY_CONTRACT_ADDRESS,
       rpcUrl: VITE_ETHEREUM_RPC_URL,
+      l2NativeInL1Address: VITE_HYPERCHAIN_ZK_EVM_NATIVE_IN_ETHEREUM_ADDRESS,
     },
     hyperchainZkEVM: {
       bridgeContractAddress: VITE_HYPERCHAIN_ZK_EVM_BRIDGE_CONTRACT_ADDRESS,
       explorerUrl: VITE_HYPERCHAIN_ZK_EVM_EXPLORER_URL,
       networkId: hyperchainZkEVMNetworkId,
       rpcUrl: VITE_HYPERCHAIN_ZK_EVM_RPC_URL,
+      l2NativeInL1Address: VITE_HYPERCHAIN_ZK_EVM_NATIVE_IN_ETHEREUM_ADDRESS,
     },
   }).then((chains) => {
     const ethereumChain = chains.find((chain) => chain.key === "ethereum");
@@ -260,6 +265,7 @@ const envParser = StrictSchema<Env, domain.Env>()(
       VITE_FIAT_EXCHANGE_RATES_API_KEY: z.string().optional(),
       VITE_FIAT_EXCHANGE_RATES_API_URL: z.string().url().optional(),
       VITE_FIAT_EXCHANGE_RATES_ETHEREUM_USDC_ADDRESS: z.string().length(42).optional(),
+      VITE_HYPERCHAIN_ZK_EVM_NATIVE_IN_ETHEREUM_ADDRESS: z.string().length(42),
       VITE_HYPERCHAIN_ZK_EVM_BRIDGE_CONTRACT_ADDRESS: z.string().length(42),
       VITE_HYPERCHAIN_ZK_EVM_EXPLORER_URL: z.string().url(),
       VITE_HYPERCHAIN_ZK_EVM_NETWORK_ID: z.string(),

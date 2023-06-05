@@ -12,4 +12,13 @@ const isTokenEther = (token: Token): boolean => {
   return token.address === ethersConstants.AddressZero;
 };
 
-export { isTokenEther, selectTokenAddress };
+const isL2NativeToken = (token: Token, chain: Chain): boolean => {
+  if (token.address == chain.l2NativeInL1Address) {
+    return true
+  }
+  return false
+};
+
+
+
+export { isTokenEther, selectTokenAddress, isL2NativeToken};

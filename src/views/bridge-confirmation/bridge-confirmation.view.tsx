@@ -92,7 +92,7 @@ export const BridgeConfirmation: FC = () => {
           }
 
           const newMaxAmountConsideringFee = (() => {
-            if (isTokenEther(token)) {
+            if (isTokenEther(token) && token.chainId == from.chainId) {
               const amountConsideringFee = amount.add(newFee);
               const tokenBalanceRemainder = amountConsideringFee.sub(tokenBalance);
               const doesAmountExceedsTokenBalance = tokenBalanceRemainder.isNegative();

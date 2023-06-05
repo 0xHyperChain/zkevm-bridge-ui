@@ -1,5 +1,21 @@
 [
   {
+    "name": "Ether",
+    "address": "0x0000000000000000000000000000000000000000",
+    "chainId": 1314,
+    "symbol": "ETH",
+    "decimals": 18,
+    "logoURI": "https://raw.githubusercontent.com/Uniswap/interface/main/src/assets/images/ethereum-logo.png"
+   },
+   {
+    "name": "HC Token",
+    "address": "0x0000000000000000000000000000000000000000",
+    "chainId": 1001,
+    "symbol": "HC",
+    "decimals": 18,
+    "logoURI": "https://raw.githubusercontent.com/0xHyperChain/zkevm-bridge-ui/main/src/assets/icons/chains/zkevm.svg"
+   },
+  {
     "name": "Matic Token",
     "address": "0x4701Aa9471d7bfAc765D87dcb1Ea6BB23AD32733",
     "chainId": 5,

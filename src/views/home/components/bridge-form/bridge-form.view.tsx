@@ -1,14 +1,14 @@
-import { BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { FC, useCallback, useEffect, useState } from "react";
 
 import { addCustomToken, getChainCustomTokens, removeCustomToken } from "src/adapters/storage";
 import { ReactComponent as ArrowDown } from "src/assets/icons/arrow-down.svg";
 import { ReactComponent as CaretDown } from "src/assets/icons/caret-down.svg";
-import { getEtherToken } from "src/constants";
+import { HC_TOKEN_LOGO_URI, getEtherToken } from "src/constants";
 import { useEnvContext } from "src/contexts/env.context";
 import { useProvidersContext } from "src/contexts/providers.context";
 import { useTokensContext } from "src/contexts/tokens.context";
-import { AsyncTask, Chain, FormData, Token } from "src/domain";
+import { AsyncTask, Chain, EthereumChainId, FormData, Token } from "src/domain";
 import { useCallIfMounted } from "src/hooks/use-call-if-mounted";
 import { isTokenEther, selectTokenAddress } from "src/utils/tokens";
 import { isAsyncTaskDataAvailable } from "src/utils/types";
@@ -55,6 +55,7 @@ export const BridgeForm: FC<BridgeFormProps> = ({ account, formData, onResetForm
   const [isTokenListOpen, setIsTokenListOpen] = useState(false);
 
   const onAmountInputChange = ({ amount, error }: { amount?: BigNumber; error?: string }) => {
+    console.log("BridgeForm->amount", amount)
     setAmount(amount);
     setInputError(error);
   };
@@ -124,8 +125,33 @@ export const BridgeForm: FC<BridgeFormProps> = ({ account, formData, onResetForm
 
   const getTokenBalance = useCallback(
     (token: Token, chain: Chain): Promise<BigNumber> => {
+      // if (token.address == env?.chains[0].l2NativeInL1Address && chain.chainId == env.chains[1].chainId) {
+      //   return chain.provider.getBalance(account);
+      // }
+      console.log("getTokenBalance", "\ntoken",token, "\nchain",chain)
+    
       if (isTokenEther(token)) {
-        return chain.provider.getBalance(account);
+        if (token.chainId == chain.chainId) {
+          return chain.provider.getBalance(account);
+        } else {
+          if (token.wrappedToken) {
+            return getErc20TokenBalance({
+              accountAddress: account,
+              chain: chain,
+              tokenAddress: token.wrappedToken?.address
+            });
+          }
+          return Promise.resolve(BigNumber.from('0'))
+        }
+        // if (token.wrappedToken && chain.chainId == env?.chains[1].chainId) {
+        //   return getErc20TokenBalance({
+        //     accountAddress: account,
+        //     chain: chain,
+        //     tokenAddress: token.wrappedToken.address
+        //   });
+        // } else {
+        //   return chain.provider.getBalance(account);
+        // }
       } else {
         return getErc20TokenBalance({
           accountAddress: account,
@@ -134,7 +160,7 @@ export const BridgeForm: FC<BridgeFormProps> = ({ account, formData, onResetForm
         });
       }
     },
-    [account, getErc20TokenBalance]
+    [account, env, selectedChains, getErc20TokenBalance]
   );
 
   useEffect(() => {
@@ -162,10 +188,10 @@ export const BridgeForm: FC<BridgeFormProps> = ({ account, formData, onResetForm
       const getUpdatedTokens = (tokens: Token[] | undefined, updatedToken: Token) =>
         tokens
           ? tokens.map((tkn) =>
-              tkn.address === updatedToken.address && tkn.chainId === updatedToken.chainId
-                ? updatedToken
-                : tkn
-            )
+            tkn.address === updatedToken.address && tkn.chainId === updatedToken.chainId
+              ? updatedToken
+              : tkn
+          )
           : undefined;
 
       setTokens(() =>
@@ -207,6 +233,7 @@ export const BridgeForm: FC<BridgeFormProps> = ({ account, formData, onResetForm
   useEffect(() => {
     // Load the balance of the selected token in both networks
     if (selectedChains && token) {
+      console.log("tokne", token)
       setBalanceFrom({ status: "loading" });
       setBalanceTo({ status: "loading" });
 
@@ -243,8 +270,36 @@ export const BridgeForm: FC<BridgeFormProps> = ({ account, formData, onResetForm
 
       if (from && to) {
         setSelectedChains({ from, to });
-        setToken(getEtherToken(from));
+        // setToken(getEtherToken(from))
+        if (from.key == "ethereum") {
+          setToken({
+            address: ethers.constants.AddressZero,
+            chainId: to.chainId,//from.chainId,
+            decimals: 18,
+            logoURI: HC_TOKEN_LOGO_URI,
+            name: "HC",
+            symbol: "HC",
+            wrappedToken: {
+              address: from.l2NativeInL1Address, //ethers.constants.AddressZero,
+              chainId: from.chainId,
+            }
+          })
+        } else {
+          setToken({
+            address: ethers.constants.AddressZero, //from.l2NativeInL1Address,
+            chainId: from.chainId,
+            decimals: 18,
+            logoURI: HC_TOKEN_LOGO_URI,
+            name: "HC",
+            symbol: "HC",
+            wrappedToken: {
+              address: from.l2NativeInL1Address,  //ethers.constants.AddressZero,
+              chainId: to.chainId,
+            }
+          });
+        }
       }
+      
       setAmount(undefined);
     }
     // This prevents the form from being reset when coming back from BridgeConfirmation
@@ -269,12 +324,17 @@ export const BridgeForm: FC<BridgeFormProps> = ({ account, formData, onResetForm
     );
   }
 
+  // console.log("defaultTokens", defaultTokens)
+  // console.log("tokens", tokens)
+  // const fromToken = 
   return (
     <form className={classes.form} onSubmit={onFormSubmit}>
       <Card className={classes.card}>
         <div className={classes.row}>
           <div className={classes.leftBox}>
-            <Typography type="body2">From</Typography>
+            <Typography type="body2">From
+             {/* {selectedChains.from.chainId == token.chainId ? token.address : token.wrappedToken?.address} */}
+            </Typography>
             <button
               className={classes.fromChain}
               onClick={() => setChains(env.chains)}
@@ -318,7 +378,9 @@ export const BridgeForm: FC<BridgeFormProps> = ({ account, formData, onResetForm
       <Card className={classes.card}>
         <div className={classes.row}>
           <div className={classes.leftBox}>
-            <Typography type="body2">To</Typography>
+            <Typography type="body2">To 
+            {/* {selectedChains.from.chainId == token.chainId ? token.wrappedToken?.address : token.address} */}
+            </Typography>
             <div className={classes.toChain}>
               <selectedChains.to.Icon />
               <Typography type="body1">{selectedChains.to.name}</Typography>
